@@ -166,6 +166,35 @@
     white-space:nowrap;
   }
   .add-btn:active{background:var(--rust-bright);}
+  .add-advanced{margin-top:12px; border-top:1px dashed var(--line); padding-top:10px;}
+  .add-advanced-toggle{
+    background:none;
+    border:none;
+    color:var(--bone-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    cursor:pointer;
+    padding:0;
+  }
+  .add-advanced-toggle:active{color:var(--rust-bright);}
+  .add-advanced-body{margin-top:10px;}
+  .add-advanced-hint{
+    font-size:12px;
+    color:var(--bone-dim);
+    line-height:1.5;
+    margin:0 0 8px;
+  }
+  #chronoAfterInput{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--bone);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    padding:10px;
+  }
   .del-btn{
     background:none;
     border:none;
@@ -466,6 +495,15 @@
   <div class="add-row" style="margin-top:8px;">
     <input type="text" id="seasonInput" placeholder="Season / label (e.g. Season 4)" />
     <button class="add-btn" id="addBtn">Add</button>
+  </div>
+  <div class="add-advanced">
+    <button class="add-advanced-toggle" id="advancedToggle" type="button">Chronological placement (optional) ▾</button>
+    <div class="add-advanced-body" id="advancedBody" style="display:none;">
+      <p class="add-advanced-hint">By default new seasons go to the end of every view. If this one takes place earlier in the story, place it after a specific season in Chronological Order instead.</p>
+      <select id="chronoAfterInput">
+        <option value="">Add to the end of the timeline (default)</option>
+      </select>
+    </div>
   </div>
 </div>
 
@@ -883,18 +921,39 @@ function toggle(id){
 function addCustomItem(){
   const showInput = document.getElementById("showInput");
   const seasonInput = document.getElementById("seasonInput");
+  const chronoAfterInput = document.getElementById("chronoAfterInput");
   const show = showInput.value.trim();
   const name = seasonInput.value.trim();
   if(!show || !name) return;
   const addedAt = Date.now();
   const id = "custom-" + addedAt + "-" + Math.random().toString(36).slice(2,7);
-  // New items go at the end of release and chronological order, and group
-  // under their own show name in By Show mode.
+
+  // Release order always appends to the end — new seasons release after
+  // what's already on the list.
   const maxRelease = Math.max(0, ...allItems().map(i => i.release ?? 0));
-  const maxChrono = Math.max(0, ...allItems().map(i => i.chrono ?? i.release ?? 0));
-  custom.push({ id, show, name, custom: true, addedAt, release: maxRelease + 1, chrono: maxChrono + 1 });
+
+  // Chronological order defaults to appending at the end too, but if the
+  // person picked an "insert after" target, slot it in right after that
+  // item using a fractional value so nothing else needs renumbering.
+  let chrono;
+  const afterId = chronoAfterInput.value;
+  if(afterId){
+    const sorted = allItems().slice().sort((a,b) => (a.chrono ?? a.release ?? 9999) - (b.chrono ?? b.release ?? 9999));
+    const afterIndex = sorted.findIndex(i => i.id === afterId);
+    const afterItem = sorted[afterIndex];
+    const nextItem = sorted[afterIndex + 1];
+    const afterChrono = afterItem.chrono ?? afterItem.release ?? 0;
+    const nextChrono = nextItem ? (nextItem.chrono ?? nextItem.release ?? afterChrono + 1) : afterChrono + 1;
+    chrono = (afterChrono + nextChrono) / 2;
+  } else {
+    const maxChrono = Math.max(0, ...allItems().map(i => i.chrono ?? i.release ?? 0));
+    chrono = maxChrono + 1;
+  }
+
+  custom.push({ id, show, name, custom: true, addedAt, release: maxRelease + 1, chrono });
   showInput.value = "";
   seasonInput.value = "";
+  chronoAfterInput.value = "";
   render();
   saveCustom();
 }
@@ -934,6 +993,13 @@ function refreshShowOptions(){
   const datalist = document.getElementById("showListOptions");
   const names = Array.from(new Set(allItems().map(i => i.show)));
   datalist.innerHTML = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}"></option>`).join("");
+
+  const chronoSelect = document.getElementById("chronoAfterInput");
+  const prevValue = chronoSelect.value;
+  const sorted = allItems().slice().sort((a,b) => (a.chrono ?? a.release ?? 9999) - (b.chrono ?? b.release ?? 9999));
+  const options = sorted.map(i => `<option value="${i.id}">${i.show} — ${i.name}</option>`).join("");
+  chronoSelect.innerHTML = `<option value="">Add to the end of the timeline (default)</option>${options}`;
+  if(sorted.some(i => i.id === prevValue)) chronoSelect.value = prevValue;
 }
 
 document.getElementById("resetBtn").addEventListener("click", () => {
@@ -945,6 +1011,14 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 document.getElementById("addBtn").addEventListener("click", addCustomItem);
 document.getElementById("seasonInput").addEventListener("keydown", (e) => {
   if(e.key === "Enter") addCustomItem();
+});
+
+document.getElementById("advancedToggle").addEventListener("click", () => {
+  const body = document.getElementById("advancedBody");
+  const toggle = document.getElementById("advancedToggle");
+  const isOpen = body.style.display !== "none";
+  body.style.display = isOpen ? "none" : "block";
+  toggle.textContent = isOpen ? "Chronological placement (optional) ▾" : "Chronological placement (optional) ▴";
 });
 
 document.getElementById("modalClose").addEventListener("click", closeModal);
