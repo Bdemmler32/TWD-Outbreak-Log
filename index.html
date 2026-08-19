@@ -375,25 +375,24 @@
     border-bottom:1px solid var(--line);
   }
   .episode-item:last-child{border-bottom:none;}
-  .episode-head{
+  .episode-toprow{
     display:flex;
-    justify-content:space-between;
-    gap:10px;
-    font-size:13px;
-    font-weight:600;
-    margin-bottom:3px;
-  }
-  .episode-num{
-    color:var(--rust-bright);
-    font-family:'JetBrains Mono',monospace;
-    font-size:11px;
-    margin-right:6px;
-  }
-  .episode-date{
+    align-items:baseline;
+    gap:8px;
     font-family:'JetBrains Mono',monospace;
     font-size:10.5px;
     color:var(--bone-dim);
-    white-space:nowrap;
+    margin-bottom:4px;
+  }
+  .episode-num{
+    color:var(--rust-bright);
+    font-weight:700;
+  }
+  .episode-title{
+    font-size:13.5px;
+    font-weight:600;
+    line-height:1.3;
+    margin-bottom:4px;
   }
   .episode-overview{
     font-size:12.5px;
@@ -819,13 +818,14 @@ async function openModal(item){
   if(seasonData.episodes && seasonData.episodes.length){
     episodesWrapEl.style.display = "block";
     episodesEl.innerHTML = seasonData.episodes.map(ep => {
-      const rating = ep.vote_average ? ` · ★ ${ep.vote_average.toFixed(1)}` : "";
-      const date = ep.air_date ? `${ep.air_date}${rating}` : rating.replace(" · ", "");
+      const rating = ep.vote_average ? `★ ${ep.vote_average.toFixed(1)}` : "";
+      const metaBits = [ep.air_date, rating].filter(Boolean).join(" · ");
       return `<li class="episode-item">
-        <div class="episode-head">
-          <span><span class="episode-num">${String(ep.episode_number).padStart(2,"0")}</span>${ep.name || "Untitled"}</span>
-          <span class="episode-date">${date}</span>
+        <div class="episode-toprow">
+          <span class="episode-num">EP ${String(ep.episode_number).padStart(2,"0")}</span>
+          ${metaBits ? `<span>${metaBits}</span>` : ""}
         </div>
+        <div class="episode-title">${ep.name || "Untitled"}</div>
         <div class="episode-overview">${ep.overview || ""}</div>
       </li>`;
     }).join("");
