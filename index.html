@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#14140f">
+<title>Outbreak Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0f0f0c;
+    --panel:#1a1a15;
+    --panel-2:#20201a;
+    --bone:#e9e4d4;
+    --bone-dim:#a8a294;
+    --rust:#b3441f;
+    --rust-bright:#d65a2e;
+    --tape:#d4a017;
+    --line:#33322a;
+    --done:#4a5c3a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at top, #1c1c16 0%, var(--ink) 60%);
+    color:var(--bone);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  .grain{
+    position:fixed; inset:0; pointer-events:none; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  header{
+    padding:28px 20px 18px;
+    border-bottom:3px solid var(--rust);
+    position:relative;
+    overflow:hidden;
+  }
+  header::before{
+    content:"";
+    position:absolute; left:0; right:0; top:0; height:6px;
+    background:repeating-linear-gradient(45deg, var(--tape), var(--tape) 10px, #1a1a15 10px, #1a1a15 20px);
+    opacity:.6;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.18em;
+    color:var(--rust-bright);
+    text-transform:uppercase;
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:'Staatliches',sans-serif;
+    font-size:38px;
+    letter-spacing:.03em;
+    margin:0;
+    color:var(--bone);
+    text-transform:uppercase;
+    line-height:1;
+  }
+  h1 span{color:var(--rust-bright);}
+  .sub{
+    font-size:13px;
+    color:var(--bone-dim);
+    margin-top:8px;
+    line-height:1.5;
+  }
+
+  .modes{
+    display:flex;
+    gap:0;
+    margin:18px 20px 0;
+    border:1px solid var(--line);
+  }
+  .mode-btn{
+    flex:1;
+    background:var(--panel);
+    border:none;
+    border-right:1px solid var(--line);
+    color:var(--bone-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    padding:12px 4px;
+    cursor:pointer;
+    line-height:1.3;
+  }
+  .mode-btn:last-child{border-right:none;}
+  .mode-btn.active{
+    background:var(--rust);
+    color:var(--bone);
+  }
+
+  .progress-wrap{
+    padding:16px 20px 0;
+  }
+  .progress-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; color:var(--bone-dim);
+    margin-bottom:8px;
+  }
+  .progress-count{color:var(--bone); font-weight:700; font-size:14px;}
+  .bar-outer{
+    height:14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    position:relative;
+    overflow:hidden;
+  }
+  .bar-outer::after{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(90deg, transparent, transparent 6px, rgba(0,0,0,.25) 6px, rgba(0,0,0,.25) 7px);
+  }
+  .bar-inner{
+    height:100%;
+    background:linear-gradient(90deg, var(--rust), var(--rust-bright));
+    width:0%;
+    transition:width .35s ease;
+  }
+
+  main{padding:20px;}
+
+  .add-group{
+    margin:0 20px 26px;
+    border:1px dashed var(--line);
+    padding:14px;
+  }
+  .add-group .show-title{color:var(--rust-bright);}
+  .add-row{
+    display:flex;
+    gap:8px;
+    margin-top:4px;
+  }
+  .add-row input{
+    flex:1;
+    min-width:0;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--bone);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    padding:11px 10px;
+  }
+  .add-row input::placeholder{color:var(--bone-dim);}
+  .add-row input:focus{outline:none; border-color:var(--rust);}
+  .add-btn{
+    background:var(--rust);
+    border:1px solid var(--rust);
+    color:var(--bone);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    padding:0 16px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .add-btn:active{background:var(--rust-bright);}
+  .del-btn{
+    background:none;
+    border:none;
+    color:var(--bone-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:16px;
+    cursor:pointer;
+    padding:0 4px;
+    line-height:1;
+  }
+  .del-btn:active{color:var(--rust-bright);}
+
+  .show-group{margin-bottom:26px;}
+  .show-title{
+    display:flex; align-items:center; gap:10px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--tape);
+    margin-bottom:10px;
+  }
+  .show-title::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--line);
+  }
+
+  .cover{
+    width:44px;
+    height:66px;
+    min-width:44px;
+    object-fit:cover;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+    color:var(--bone-dim);
+    overflow:hidden;
+  }
+  .cover img{width:100%; height:100%; object-fit:cover; display:block;}
+
+  ul{list-style:none; margin:0; padding:0;}
+  li{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:3px solid var(--rust);
+    margin-bottom:8px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:13px 14px;
+    transition:background .2s, border-color .2s, opacity .2s;
+  }
+  li.checked{
+    border-left-color:var(--done);
+    background:var(--panel-2);
+    opacity:.55;
+  }
+  .box{
+    width:22px; height:22px;
+    min-width:22px;
+    border:2px solid var(--bone-dim);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    font-size:14px;
+    color:transparent;
+  }
+  li.checked .box{
+    border-color:var(--done);
+    background:var(--done);
+    color:var(--bone);
+  }
+  .label{flex:1; cursor:pointer;}
+  .label .n{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--rust-bright);
+    margin-right:6px;
+  }
+  .label .name{font-size:14.5px; font-weight:500;}
+  li.checked .label .name{text-decoration:line-through; text-decoration-color:var(--done);}
+
+  footer{
+    padding:10px 20px 30px;
+    text-align:center;
+  }
+  .reset-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--bone-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:10px 18px;
+    cursor:pointer;
+  }
+  .reset-btn:active{border-color:var(--rust); color:var(--rust-bright);}
+
+  .loading{padding:40px 20px; text-align:center; color:var(--bone-dim); font-family:'JetBrains Mono',monospace; font-size:12px;}
+
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(6,6,4,.82);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:50;
+    padding:0;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-panel{
+    background:var(--panel);
+    border-top:3px solid var(--rust);
+    width:100%;
+    max-width:480px;
+    max-height:82vh;
+    overflow-y:auto;
+    position:relative;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .modal-top{display:flex; gap:16px;}
+  .modal-close{
+    position:absolute;
+    top:12px; right:12px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--bone);
+    width:30px; height:30px;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .modal-cover{
+    width:96px; height:144px;
+    min-width:96px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+    color:var(--bone-dim);
+    overflow:hidden;
+  }
+  .modal-cover img{width:100%; height:100%; object-fit:cover; display:block;}
+  .modal-body{flex:1; min-width:0; padding-top:2px;}
+  .modal-show{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--tape);
+    margin-bottom:4px;
+  }
+  .modal-name{
+    font-family:'Staatliches',sans-serif;
+    font-size:24px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    line-height:1.1;
+    margin-bottom:8px;
+  }
+  .modal-meta{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--bone-dim);
+    margin-bottom:8px;
+  }
+  .modal-tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:4px;
+  }
+  .modal-tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--bone-dim);
+    border:1px solid var(--line);
+    padding:3px 7px;
+  }
+  .modal-overview{
+    font-size:13.5px;
+    line-height:1.55;
+    color:var(--bone);
+  }
+  .modal-section-title{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--tape);
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+    margin-bottom:2px;
+  }
+  .episode-list{list-style:none; margin:0; padding:0;}
+  .episode-item{
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .episode-item:last-child{border-bottom:none;}
+  .episode-head{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:3px;
+  }
+  .episode-num{
+    color:var(--rust-bright);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    margin-right:6px;
+  }
+  .episode-date{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--bone-dim);
+    white-space:nowrap;
+  }
+  .episode-overview{
+    font-size:12.5px;
+    line-height:1.5;
+    color:var(--bone-dim);
+  }
+
+  @media (min-width:640px){
+    .modal-overlay{
+      align-items:center;
+      padding:20px;
+    }
+    .modal-panel{
+      border-top:1px solid var(--line);
+      border-left:3px solid var(--rust);
+      max-width:560px;
+      max-height:min(720px, 88vh);
+    }
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<header>
+  <p class="eyebrow">The Walking Dead Universe</p>
+  <h1>Outbreak <span>Log</span></h1>
+  <p class="sub" id="subText">Release-order checklist. Tap a row to mark it survived.</p>
+</header>
+
+<div class="modes">
+  <button class="mode-btn active" data-mode="release">Release<br>Order</button>
+  <button class="mode-btn" data-mode="chrono">Chronological<br>Order</button>
+  <button class="mode-btn" data-mode="byshow">By<br>Show</button>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-row">
+    <span>PROGRESS</span>
+    <span class="progress-count" id="progressCount">0 / 29</span>
+  </div>
+  <div class="bar-outer"><div class="bar-inner" id="barInner"></div></div>
+</div>
+
+<main id="main">
+  <div class="loading">loading log…</div>
+</main>
+
+<div class="add-group">
+  <div class="show-title">Add a new season</div>
+  <div class="add-row">
+    <input type="text" id="showInput" list="showListOptions" placeholder="Show name" />
+    <datalist id="showListOptions"></datalist>
+  </div>
+  <div class="add-row" style="margin-top:8px;">
+    <input type="text" id="seasonInput" placeholder="Season / label (e.g. Season 4)" />
+    <button class="add-btn" id="addBtn">Add</button>
+  </div>
+</div>
+
+<footer>
+  <button class="reset-btn" id="resetBtn">Reset checklist</button>
+</footer>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-panel">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-top">
+      <div class="modal-cover" id="modalCover">🎬</div>
+      <div class="modal-body">
+        <div class="modal-show" id="modalShow"></div>
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-meta" id="modalMeta"></div>
+        <div class="modal-tags" id="modalTags"></div>
+      </div>
+    </div>
+    <div class="modal-overview" id="modalOverview"></div>
+    <div id="modalEpisodesWrap">
+      <div class="modal-section-title">Episodes</div>
+      <ul class="episode-list" id="modalEpisodes"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+// Each base item carries its release-order position and its in-universe
+// chronological position, so the same checkbox state works under any view.
+const ITEMS = [
+  {id:"twd-s1",  show:"The Walking Dead", name:"Season 1",  release:1,  chrono:4},
+  {id:"twd-s2",  show:"The Walking Dead", name:"Season 2",  release:2,  chrono:5},
+  {id:"twd-s3",  show:"The Walking Dead", name:"Season 3",  release:3,  chrono:6},
+  {id:"twd-s4",  show:"The Walking Dead", name:"Season 4",  release:4,  chrono:7},
+  {id:"twd-s5",  show:"The Walking Dead", name:"Season 5",  release:5,  chrono:13},
+  {id:"ftwd-s1", show:"Fear the Walking Dead", name:"Season 1", release:6,  chrono:1},
+  {id:"twd-s6",  show:"The Walking Dead", name:"Season 6",  release:7,  chrono:14},
+  {id:"ftwd-s2", show:"Fear the Walking Dead", name:"Season 2", release:8,  chrono:2},
+  {id:"twd-s7",  show:"The Walking Dead", name:"Season 7",  release:9,  chrono:15},
+  {id:"ftwd-s3", show:"Fear the Walking Dead", name:"Season 3", release:10, chrono:3},
+  {id:"twd-s8",  show:"The Walking Dead", name:"Season 8",  release:11, chrono:16},
+  {id:"ftwd-s4", show:"Fear the Walking Dead", name:"Season 4", release:12, chrono:8},
+  {id:"twd-s9",  show:"The Walking Dead", name:"Season 9",  release:13, chrono:19},
+  {id:"ftwd-s5", show:"Fear the Walking Dead", name:"Season 5", release:14, chrono:9},
+  {id:"twd-s10", show:"The Walking Dead", name:"Season 10", release:15, chrono:20},
+  {id:"wb-s1",   show:"The Walking Dead: World Beyond", name:"Season 1", release:16, chrono:17},
+  {id:"ftwd-s6", show:"Fear the Walking Dead", name:"Season 6", release:17, chrono:10},
+  {id:"twd-s11", show:"The Walking Dead", name:"Season 11", release:18, chrono:21},
+  {id:"wb-s2",   show:"The Walking Dead: World Beyond", name:"Season 2", release:19, chrono:18},
+  {id:"ftwd-s7", show:"Fear the Walking Dead", name:"Season 7", release:20, chrono:11},
+  {id:"tales-s1",show:"Tales of the Walking Dead", name:"Season 1 (anthology — watch anytime)", release:21, chrono:22},
+  {id:"ftwd-s8", show:"Fear the Walking Dead", name:"Season 8", release:22, chrono:12},
+  {id:"dc-s1",   show:"The Walking Dead: Dead City", name:"Season 1", release:23, chrono:24},
+  {id:"dd-s1",   show:"The Walking Dead: Daryl Dixon", name:"Season 1", release:24, chrono:27},
+  {id:"owl-s1",  show:"The Walking Dead: The Ones Who Live", name:"Limited Series", release:25, chrono:23},
+  {id:"dd-s2",   show:"The Walking Dead: Daryl Dixon", name:"Season 2", release:26, chrono:28},
+  {id:"dc-s2",   show:"The Walking Dead: Dead City", name:"Season 2", release:27, chrono:25},
+  {id:"dd-s3",   show:"The Walking Dead: Daryl Dixon", name:"Season 3", release:28, chrono:29},
+  {id:"dc-s3",   show:"The Walking Dead: Dead City", name:"Season 3", release:29, chrono:26},
+];
+
+// Show display order for "By Show" mode — order each show first appears in release order.
+const SHOW_ORDER = [
+  "The Walking Dead",
+  "Fear the Walking Dead",
+  "The Walking Dead: World Beyond",
+  "Tales of the Walking Dead",
+  "The Walking Dead: Dead City",
+  "The Walking Dead: Daryl Dixon",
+  "The Walking Dead: The Ones Who Live",
+];
+
+const MODE_SUBTEXT = {
+  release: "Release-order checklist, from the first bite to the latest season.",
+  chrono: "In-universe chronological order. You'll switch shows mid-season a few times.",
+  byshow: "All seasons of each show, grouped together.",
+};
+
+const CHECKED_KEY = "twd-outbreak-log-checked";
+const CUSTOM_KEY = "twd-outbreak-log-custom";
+const MODE_KEY = "twd-outbreak-log-mode";
+const TMDB_CACHE_KEY = "twd-outbreak-log-tmdb-cache";
+
+// TMDB v4 read access token. This sits in plain JS on the page, which is
+// fine for a personal read-only token but is publicly visible on GitHub
+// Pages — anyone can view-source and copy it.
+const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwNmQ3YWI4ZDhlNjI5NDBhMGU2MDk2MzBkYjI2NDc2NCIsIm5iZiI6MTc3NzM3NDQxNi4zMTMsInN1YiI6IjY5ZjA5NGQwYWRlMzAyNzgwYTE0MzMyYiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.my27y5Naq2ozPtN1qoz_lJlw0cWuSXHHCPxsnI8YLok";
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w154";
+
+let checked = {};
+let custom = []; // [{id, show, name, custom:true, addedAt}]
+let mode = "release";
+let tmdbCache = { showIds: {}, posters: {}, showDetails: {} }; // showIds: {showName: id|null}, posters: {"showId-season": seasonInfo|null}, showDetails: {showId: info|null}
+const posterLoading = new Set();
+
+function allItems(){
+  return ITEMS.concat(custom);
+}
+
+function orderedGroups(){
+  const items = allItems();
+  let sorted;
+  if(mode === "release"){
+    sorted = items.slice().sort((a,b) => (a.release ?? 9999) - (b.release ?? 9999));
+  } else if(mode === "chrono"){
+    sorted = items.slice().sort((a,b) => (a.chrono ?? a.release ?? 9999) - (b.chrono ?? b.release ?? 9999));
+  } else { // byshow
+    sorted = items.slice().sort((a,b) => {
+      let ai = SHOW_ORDER.indexOf(a.show); if(ai === -1) ai = 999 + (a.addedAt || 0);
+      let bi = SHOW_ORDER.indexOf(b.show); if(bi === -1) bi = 999 + (b.addedAt || 0);
+      if(ai !== bi) return ai - bi;
+      return (a.release ?? 9999) - (b.release ?? 9999);
+    });
+  }
+  const groups = [];
+  sorted.forEach(item => {
+    const last = groups[groups.length - 1];
+    if(last && last.show === item.show){
+      last.items.push(item);
+    } else {
+      groups.push({ show: item.show, items: [item] });
+    }
+  });
+  return groups;
+}
+
+function render(){
+  document.getElementById("subText").textContent = MODE_SUBTEXT[mode];
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+  });
+
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  let n = 0;
+  orderedGroups().forEach(group => {
+    const section = document.createElement("div");
+    section.className = "show-group";
+    const title = document.createElement("div");
+    title.className = "show-title";
+    title.textContent = group.show;
+    section.appendChild(title);
+    const ul = document.createElement("ul");
+    group.items.forEach(item => {
+      n++;
+      const li = document.createElement("li");
+      const isChecked = !!checked[item.id];
+      li.className = isChecked ? "checked" : "";
+      const box = document.createElement("div");
+      box.className = "box";
+      box.textContent = isChecked ? "✓" : "";
+      box.addEventListener("click", () => toggle(item.id));
+      const cover = document.createElement("div");
+      cover.className = "cover";
+      cover.textContent = "🎬";
+      cover.dataset.itemId = item.id;
+      cover.addEventListener("click", (e) => { e.stopPropagation(); openModal(item); });
+      const label = document.createElement("div");
+      label.className = "label";
+      label.innerHTML = `<span class="n">${String(n).padStart(2,"0")}</span><span class="name">${item.name}</span>`;
+      label.addEventListener("click", () => toggle(item.id));
+      li.appendChild(cover);
+      li.appendChild(box);
+      li.appendChild(label);
+      if(item.custom){
+        const del = document.createElement("button");
+        del.className = "del-btn";
+        del.textContent = "✕";
+        del.addEventListener("click", (e) => { e.stopPropagation(); removeCustom(item.id); });
+        li.appendChild(del);
+      }
+      ul.appendChild(li);
+    });
+    section.appendChild(ul);
+    main.appendChild(section);
+  });
+  updateProgress();
+  loadPostersForVisibleItems();
+  refreshShowOptions();
+}
+
+function parseSeasonNumber(name){
+  const m = name.match(/season\s*(\d+)/i);
+  if(m) return parseInt(m[1], 10);
+  return 1; // limited series / anthology / anything unlabeled defaults to season 1
+}
+
+async function tmdbFetch(path){
+  const res = await fetch(`${TMDB_BASE}${path}`, {
+    headers: {
+      "Authorization": `Bearer ${TMDB_TOKEN}`,
+      "Accept": "application/json",
+    }
+  });
+  if(!res.ok) throw new Error(`TMDB ${res.status}`);
+  return res.json();
+}
+
+async function getShowId(showName){
+  if(showName in tmdbCache.showIds) return tmdbCache.showIds[showName];
+  try{
+    const data = await tmdbFetch(`/search/tv?query=${encodeURIComponent(showName)}`);
+    const id = (data.results && data.results[0]) ? data.results[0].id : null;
+    tmdbCache.showIds[showName] = id;
+    saveTmdbCache();
+    return id;
+  }catch(e){
+    tmdbCache.showIds[showName] = null;
+    saveTmdbCache();
+    return null;
+  }
+}
+
+async function getSeasonData(showId, seasonNum){
+  const key = `${showId}-${seasonNum}`;
+  if(key in tmdbCache.posters) return tmdbCache.posters[key];
+  try{
+    const data = await tmdbFetch(`/tv/${showId}/season/${seasonNum}`);
+    const info = {
+      poster_path: data.poster_path || null,
+      overview: data.overview || "",
+      air_date: data.air_date || "",
+      vote_average: typeof data.vote_average === "number" ? data.vote_average : null,
+      episode_count: (data.episodes || []).length || null,
+      name: data.name || null,
+      episodes: (data.episodes || []).map(ep => ({
+        episode_number: ep.episode_number,
+        name: ep.name,
+        air_date: ep.air_date,
+        overview: ep.overview,
+        vote_average: typeof ep.vote_average === "number" ? ep.vote_average : null,
+      })),
+    };
+    tmdbCache.posters[key] = info;
+    saveTmdbCache();
+    return info;
+  }catch(e){
+    tmdbCache.posters[key] = null;
+    saveTmdbCache();
+    return null;
+  }
+}
+
+async function getShowDetails(showId){
+  if(showId in tmdbCache.showDetails) return tmdbCache.showDetails[showId];
+  try{
+    const data = await tmdbFetch(`/tv/${showId}`);
+    const info = {
+      status: data.status || null,
+      networks: (data.networks || []).map(n => n.name),
+      genres: (data.genres || []).map(g => g.name),
+      vote_average: typeof data.vote_average === "number" ? data.vote_average : null,
+      number_of_seasons: data.number_of_seasons || null,
+    };
+    tmdbCache.showDetails[showId] = info;
+    saveTmdbCache();
+    return info;
+  }catch(e){
+    tmdbCache.showDetails[showId] = null;
+    saveTmdbCache();
+    return null;
+  }
+}
+
+async function loadPosterFor(item, coverEl){
+  if(posterLoading.has(item.id)) return;
+  posterLoading.add(item.id);
+  try{
+    const showId = await getShowId(item.show);
+    if(!showId){ coverEl.textContent = "🎬"; return; }
+    const seasonNum = parseSeasonNumber(item.name);
+    const seasonData = await getSeasonData(showId, seasonNum);
+    const posterPath = seasonData && seasonData.poster_path;
+    if(posterPath){
+      const img = document.createElement("img");
+      img.src = `${TMDB_IMG_BASE}${posterPath}`;
+      img.alt = `${item.show} ${item.name}`;
+      img.loading = "lazy";
+      img.onerror = () => { coverEl.textContent = "🎬"; };
+      coverEl.textContent = "";
+      coverEl.appendChild(img);
+    } else {
+      coverEl.textContent = "🎬";
+    }
+  }catch(e){
+    coverEl.textContent = "🎬";
+  }finally{
+    posterLoading.delete(item.id);
+  }
+}
+
+function loadPostersForVisibleItems(){
+  const items = allItems();
+  document.querySelectorAll(".cover[data-item-id]").forEach(coverEl => {
+    const item = items.find(i => i.id === coverEl.dataset.itemId);
+    if(item) loadPosterFor(item, coverEl);
+  });
+}
+
+function saveTmdbCache(){
+  try{ localStorage.setItem(TMDB_CACHE_KEY, JSON.stringify(tmdbCache)); }
+  catch(e){ console.error("save tmdb cache failed", e); }
+}
+
+async function openModal(item){
+  const overlay = document.getElementById("modalOverlay");
+  const coverEl = document.getElementById("modalCover");
+  const showEl = document.getElementById("modalShow");
+  const nameEl = document.getElementById("modalName");
+  const metaEl = document.getElementById("modalMeta");
+  const tagsEl = document.getElementById("modalTags");
+  const overviewEl = document.getElementById("modalOverview");
+  const episodesWrapEl = document.getElementById("modalEpisodesWrap");
+  const episodesEl = document.getElementById("modalEpisodes");
+
+  showEl.textContent = item.show;
+  nameEl.textContent = item.name;
+  metaEl.textContent = "Loading details…";
+  tagsEl.innerHTML = "";
+  overviewEl.textContent = "";
+  episodesEl.innerHTML = "";
+  episodesWrapEl.style.display = "none";
+  coverEl.innerHTML = "🎬";
+  overlay.classList.add("open");
+
+  const showId = await getShowId(item.show);
+  if(!showId){
+    metaEl.textContent = "No TMDB match found for this show.";
+    return;
+  }
+  const seasonNum = parseSeasonNumber(item.name);
+  const [seasonData, showDetails] = await Promise.all([
+    getSeasonData(showId, seasonNum),
+    getShowDetails(showId),
+  ]);
+
+  if(!seasonData){
+    metaEl.textContent = "No season details found on TMDB.";
+    return;
+  }
+  if(seasonData.poster_path){
+    const img = document.createElement("img");
+    img.src = `${TMDB_IMG_BASE}${seasonData.poster_path}`;
+    img.alt = `${item.show} ${item.name}`;
+    coverEl.innerHTML = "";
+    coverEl.appendChild(img);
+  }
+
+  const metaParts = [];
+  if(seasonData.air_date) metaParts.push(`First aired ${seasonData.air_date}`);
+  if(seasonData.episode_count) metaParts.push(`${seasonData.episode_count} episodes`);
+  if(seasonData.vote_average) metaParts.push(`★ ${seasonData.vote_average.toFixed(1)} season rating`);
+  metaEl.textContent = metaParts.length ? metaParts.join(" · ") : "No air date on file.";
+
+  const tags = [];
+  if(showDetails){
+    if(showDetails.status) tags.push(showDetails.status);
+    if(showDetails.networks && showDetails.networks.length) tags.push(showDetails.networks[0]);
+    (showDetails.genres || []).forEach(g => tags.push(g));
+  }
+  tagsEl.innerHTML = tags.map(t => `<span class="modal-tag">${t}</span>`).join("");
+
+  overviewEl.textContent = seasonData.overview || "No synopsis available for this season.";
+
+  if(seasonData.episodes && seasonData.episodes.length){
+    episodesWrapEl.style.display = "block";
+    episodesEl.innerHTML = seasonData.episodes.map(ep => {
+      const rating = ep.vote_average ? ` · ★ ${ep.vote_average.toFixed(1)}` : "";
+      const date = ep.air_date ? `${ep.air_date}${rating}` : rating.replace(" · ", "");
+      return `<li class="episode-item">
+        <div class="episode-head">
+          <span><span class="episode-num">${String(ep.episode_number).padStart(2,"0")}</span>${ep.name || "Untitled"}</span>
+          <span class="episode-date">${date}</span>
+        </div>
+        <div class="episode-overview">${ep.overview || ""}</div>
+      </li>`;
+    }).join("");
+  }
+}
+
+function closeModal(){
+  document.getElementById("modalOverlay").classList.remove("open");
+}
+
+function updateProgress(){
+  const items = allItems();
+  const doneCount = items.filter(i => checked[i.id]).length;
+  document.getElementById("progressCount").textContent = `${doneCount} / ${items.length}`;
+  document.getElementById("barInner").style.width = items.length ? `${(doneCount/items.length)*100}%` : "0%";
+}
+
+function saveChecked(){
+  try{ localStorage.setItem(CHECKED_KEY, JSON.stringify(checked)); }
+  catch(e){ console.error("save failed", e); }
+}
+function saveCustom(){
+  try{ localStorage.setItem(CUSTOM_KEY, JSON.stringify(custom)); }
+  catch(e){ console.error("save custom failed", e); }
+}
+function saveMode(){
+  try{ localStorage.setItem(MODE_KEY, mode); }
+  catch(e){ console.error("save mode failed", e); }
+}
+
+function toggle(id){
+  checked[id] = !checked[id];
+  render();
+  saveChecked();
+}
+
+function addCustomItem(){
+  const showInput = document.getElementById("showInput");
+  const seasonInput = document.getElementById("seasonInput");
+  const show = showInput.value.trim();
+  const name = seasonInput.value.trim();
+  if(!show || !name) return;
+  const addedAt = Date.now();
+  const id = "custom-" + addedAt + "-" + Math.random().toString(36).slice(2,7);
+  // New items go at the end of release and chronological order, and group
+  // under their own show name in By Show mode.
+  const maxRelease = Math.max(0, ...allItems().map(i => i.release ?? 0));
+  const maxChrono = Math.max(0, ...allItems().map(i => i.chrono ?? i.release ?? 0));
+  custom.push({ id, show, name, custom: true, addedAt, release: maxRelease + 1, chrono: maxChrono + 1 });
+  showInput.value = "";
+  seasonInput.value = "";
+  render();
+  saveCustom();
+}
+
+function removeCustom(id){
+  custom = custom.filter(i => i.id !== id);
+  delete checked[id];
+  render();
+  saveCustom();
+  saveChecked();
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(CHECKED_KEY);
+    checked = raw ? JSON.parse(raw) : {};
+  }catch(e){ checked = {}; }
+  try{
+    const raw = localStorage.getItem(CUSTOM_KEY);
+    custom = raw ? JSON.parse(raw) : [];
+  }catch(e){ custom = []; }
+  try{
+    const raw = localStorage.getItem(MODE_KEY);
+    if(raw === "release" || raw === "chrono" || raw === "byshow") mode = raw;
+  }catch(e){ /* ignore */ }
+  try{
+    const raw = localStorage.getItem(TMDB_CACHE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      tmdbCache = { showIds: parsed.showIds || {}, posters: parsed.posters || {}, showDetails: parsed.showDetails || {} };
+    }
+  }catch(e){ /* ignore */ }
+  render();
+}
+
+function refreshShowOptions(){
+  const datalist = document.getElementById("showListOptions");
+  const names = Array.from(new Set(allItems().map(i => i.show)));
+  datalist.innerHTML = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}"></option>`).join("");
+}
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  checked = {};
+  render();
+  saveChecked();
+});
+
+document.getElementById("addBtn").addEventListener("click", addCustomItem);
+document.getElementById("seasonInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter") addCustomItem();
+});
+
+document.getElementById("modalClose").addEventListener("click", closeModal);
+document.getElementById("modalOverlay").addEventListener("click", (e) => {
+  if(e.target.id === "modalOverlay") closeModal();
+});
+
+document.querySelectorAll(".mode-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    mode = btn.dataset.mode;
+    saveMode();
+    render();
+  });
+});
+
+load();
+</script>
+</body>
+</html>
