@@ -133,6 +133,55 @@
 
   main{padding:20px;}
 
+  .ondeck{
+    margin:16px 20px 4px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:4px solid var(--tape);
+    padding:14px;
+    display:flex;
+    gap:14px;
+    align-items:center;
+  }
+  .ondeck-cover{
+    width:56px;
+    height:84px;
+    min-width:56px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+    color:var(--bone-dim);
+    overflow:hidden;
+  }
+  .ondeck-cover img{width:100%; height:100%; object-fit:cover; display:block;}
+  .ondeck-info{flex:1; min-width:0;}
+  .ondeck-eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--tape);
+    margin-bottom:4px;
+  }
+  .ondeck-show{
+    font-size:12px;
+    color:var(--bone-dim);
+    margin-bottom:2px;
+  }
+  .ondeck-name{
+    font-family:'Staatliches',sans-serif;
+    font-size:21px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+    line-height:1.1;
+  }
+  .ondeck-done{
+    font-size:13px;
+    color:var(--bone-dim);
+    line-height:1.4;
+  }
+
   .add-group{
     margin:0 20px 26px;
     border:1px dashed var(--line);
@@ -485,6 +534,8 @@
   <div class="bar-outer"><div class="bar-inner" id="barInner"></div></div>
 </div>
 
+<div class="ondeck" id="onDeck"></div>
+
 <main id="main">
   <div class="loading">loading log…</div>
 </main>
@@ -602,27 +653,29 @@ let checked = {};
 let custom = []; // [{id, show, name, custom:true, addedAt}]
 let mode = "release";
 let tmdbCache = { showIds: {}, posters: {}, showDetails: {} }; // showIds: {showName: id|null}, posters: {"showId-season": seasonInfo|null}, showDetails: {showId: info|null}
-const posterLoading = new Set();
 
 function allItems(){
   return ITEMS.concat(custom);
 }
 
-function orderedGroups(){
+function sortedItems(){
   const items = allItems();
-  let sorted;
   if(mode === "release"){
-    sorted = items.slice().sort((a,b) => (a.release ?? 9999) - (b.release ?? 9999));
+    return items.slice().sort((a,b) => (a.release ?? 9999) - (b.release ?? 9999));
   } else if(mode === "chrono"){
-    sorted = items.slice().sort((a,b) => (a.chrono ?? a.release ?? 9999) - (b.chrono ?? b.release ?? 9999));
+    return items.slice().sort((a,b) => (a.chrono ?? a.release ?? 9999) - (b.chrono ?? b.release ?? 9999));
   } else { // byshow
-    sorted = items.slice().sort((a,b) => {
+    return items.slice().sort((a,b) => {
       let ai = SHOW_ORDER.indexOf(a.show); if(ai === -1) ai = 999 + (a.addedAt || 0);
       let bi = SHOW_ORDER.indexOf(b.show); if(bi === -1) bi = 999 + (b.addedAt || 0);
       if(ai !== bi) return ai - bi;
       return (a.release ?? 9999) - (b.release ?? 9999);
     });
   }
+}
+
+function orderedGroups(){
+  const sorted = sortedItems();
   const groups = [];
   sorted.forEach(item => {
     const last = groups[groups.length - 1];
@@ -688,6 +741,36 @@ function render(){
   updateProgress();
   loadPostersForVisibleItems();
   refreshShowOptions();
+  renderOnDeck();
+}
+
+function renderOnDeck(){
+  const onDeckEl = document.getElementById("onDeck");
+  const items = sortedItems();
+  const nextIndex = items.findIndex(i => !checked[i.id]);
+
+  if(nextIndex === -1){
+    onDeckEl.innerHTML = `
+      <div class="ondeck-cover">🏁</div>
+      <div class="ondeck-info">
+        <div class="ondeck-eyebrow">On Deck</div>
+        <div class="ondeck-done">You're all caught up in this view — nothing left unchecked.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const item = items[nextIndex];
+  onDeckEl.innerHTML = `
+    <div class="ondeck-cover" data-ondeck-cover="1">🎬</div>
+    <div class="ondeck-info">
+      <div class="ondeck-eyebrow">On Deck — #${nextIndex + 1}</div>
+      <div class="ondeck-show">${item.show}</div>
+      <div class="ondeck-name">${item.name}</div>
+    </div>
+  `;
+  const coverEl = onDeckEl.querySelector('[data-ondeck-cover="1"]');
+  loadPosterFor(item, coverEl);
 }
 
 function parseSeasonNumber(name){
@@ -774,8 +857,6 @@ async function getShowDetails(showId){
 }
 
 async function loadPosterFor(item, coverEl){
-  if(posterLoading.has(item.id)) return;
-  posterLoading.add(item.id);
   try{
     const showId = await getShowId(item.show);
     if(!showId){ coverEl.textContent = "🎬"; return; }
@@ -795,8 +876,6 @@ async function loadPosterFor(item, coverEl){
     }
   }catch(e){
     coverEl.textContent = "🎬";
-  }finally{
-    posterLoading.delete(item.id);
   }
 }
 

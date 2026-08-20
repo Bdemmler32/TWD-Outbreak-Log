@@ -1,5 +1,5 @@
 // Bump this when you deploy changes to index.html so old caches get replaced.
-const CACHE_NAME = "outbreak-log-v2";
+const CACHE_NAME = "outbreak-log-v3";
 
 const APP_SHELL = [
   "./index.html",
